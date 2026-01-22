@@ -17,7 +17,7 @@ public class TestLogMCPHost : MonoBehaviour
         _mcpHost.SetLogger(logger);
         _mcpHost.RegisterDefaultHandlers();
 
-        _mcpHandler = new MCPHandler();
+        _mcpHandler = new MCPHandler(logger: logger);
         _mcpHandler.RegisterTool(new TestLogMCPTool(logger));
         _mcpHost.UseMCPHandler(_mcpHandler);
 

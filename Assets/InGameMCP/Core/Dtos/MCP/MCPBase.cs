@@ -6,6 +6,6 @@ namespace InGameMCP.Core.Dtos.MCP
     public class MCPBase
     {
         public string jsonrpc = "2.0";
-        public string id;
+        public object id;
     }
 }

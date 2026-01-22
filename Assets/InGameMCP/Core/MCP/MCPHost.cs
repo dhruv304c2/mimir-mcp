@@ -43,6 +43,7 @@ namespace InGameMCP.Core.MCP
 
         public void UseMCPHandler(MCPHandler handler)
         {
+            RegisterHandler(new MCPDiscoveryHandler());
             RegisterHandler(handler);
         }
 

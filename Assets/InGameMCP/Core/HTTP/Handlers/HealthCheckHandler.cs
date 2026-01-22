@@ -7,7 +7,7 @@ namespace InGameMCP.Core.HTTP.Handlers
     public class HealthCheckHandler : HTTPHandler
     {
         public HealthCheckHandler()
-            : base("/health", "GET") { }
+            : base("/", "GET") { }
 
         public override void Handle(HttpListenerContext ctx)
         {

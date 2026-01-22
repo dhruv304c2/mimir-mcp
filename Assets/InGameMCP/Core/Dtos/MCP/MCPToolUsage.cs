@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 
 namespace InGameMCP.Core.Dtos.MCP
 {
@@ -8,7 +9,7 @@ namespace InGameMCP.Core.Dtos.MCP
     {
         public string name;
         public string description;
-        public InputSchema input_schema;
+        public InputSchema inputSchema;
     }
 
     [Serializable]
@@ -22,6 +23,8 @@ namespace InGameMCP.Core.Dtos.MCP
     public class Property
     {
         public string type = "object";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public string description;
     }
 }

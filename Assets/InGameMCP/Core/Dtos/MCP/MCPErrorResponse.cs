@@ -30,7 +30,7 @@ namespace InGameMCP.Core.Dtos.MCP
     {
         public MCPError error;
 
-        public MCPErrorResponse(string id, MCPError error)
+        public MCPErrorResponse(object id, MCPError error)
         {
             this.id = id;
             this.error = error;

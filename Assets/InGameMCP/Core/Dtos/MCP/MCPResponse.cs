@@ -5,9 +5,15 @@ using UnityEditor;
 namespace InGameMCP.Core.Dtos.MCP
 {
     [Serializable]
-    public class MCPContentResult : MCPBase
+    public class MCPContentResponse : MCPBase
     {
-        public ContentBase[] contents;
+        public MCPContentResult result;
+    }
+
+    [Serializable]
+    public class MCPContentResult
+    {
+        public ContentBase[] content;
     }
 
     [Serializable]
@@ -49,9 +55,14 @@ namespace InGameMCP.Core.Dtos.MCP
         }
     }
 
-    // Tool Response
     [Serializable]
     public class MCPToolResponse : MCPBase
+    {
+        public MCPToolListResult result;
+    }
+
+    [Serializable]
+    public class MCPToolListResult
     {
         public List<MCPToolUsage> tools;
     }

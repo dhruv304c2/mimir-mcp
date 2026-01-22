@@ -61,7 +61,7 @@ namespace InGameMCP.Core.MCP.MCPTool
         }
 
         public virtual void HandleToolCall(
-            string id,
+            object id,
             HttpListenerContext ctx,
             Dictionary<string, object> parameters
         )
@@ -102,7 +102,7 @@ namespace InGameMCP.Core.MCP.MCPTool
             {
                 name = ToolName,
                 description = ToolDescription,
-                input_schema = inputSchema,
+                inputSchema = inputSchema,
             };
         }
     }

@@ -43,7 +43,7 @@ public class TestLogMCPTool : MCPToolBase
     }
 
     public override void HandleToolCall(
-        string id,
+        object id,
         HttpListenerContext ctx,
         Dictionary<string, object> parameters
     )
@@ -61,13 +61,19 @@ public class TestLogMCPTool : MCPToolBase
         var level = ResolveLevel(parameters);
         WriteToUnityLog(level, message);
 
-        var result = new MCPContentResult
+        var response = new MCPContentResponse
         {
             id = id,
-            contents = new ContentBase[] { new ContentText($"Logged message as {level} level.") },
+            result = new MCPContentResult
+            {
+                content = new ContentBase[]
+                {
+                    new ContentText($"Logged message as {level} level."),
+                }
+            }
         };
 
-        HTTPUtils.SafeWriteJson(ctx, HttpStatusCode.OK, result);
+        HTTPUtils.SafeWriteJson(ctx, HttpStatusCode.OK, response);
     }
 
     static bool TryGetMessage(Dictionary<string, object> parameters, out string message)

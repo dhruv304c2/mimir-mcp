@@ -33,7 +33,7 @@ namespace InGameMCP.Tools
             {
                 scene = scene.name,
                 rootCount = roots.Length,
-                hierarchy = new List<HierarchyNode>()
+                hierarchy = new List<HierarchyNode>(),
             };
 
             foreach (var root in roots)
@@ -51,7 +51,7 @@ namespace InGameMCP.Tools
             {
                 id = transform.name,
                 path = path,
-                children = new List<HierarchyNode>()
+                children = new List<HierarchyNode>(),
             };
 
             for (var i = 0; i < transform.childCount; i++)

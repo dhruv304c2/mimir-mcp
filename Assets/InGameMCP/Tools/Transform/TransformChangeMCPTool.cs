@@ -8,11 +8,12 @@ using InGameMCP.Core.MCP.MCPTool.Attributes;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace InGameMCP.Tools
+namespace InGameMCP.Tools.ObjectTransform
 {
     [MCPTool(
         toolName: "transform_change",
-        description: "Adjusts a transform's position, rotation, or scale using explicit parameters."
+        description:
+            "Adjusts a transform's position, rotation, or scale using explicit parameters. Specify at least one axis per call and include an optional transition_time for smoothing."
     )]
     public class TransformChangeMCPTool : MCPToolBase
     {
@@ -32,6 +33,13 @@ namespace InGameMCP.Tools
 
         [MCPToolParam("position_z", "Optional world Z position.", MCPToolParam.ParamType.Number)]
         public float? PositionZ;
+
+        [MCPToolParam(
+            "position_transition_time",
+            "Optional seconds to ease toward the new position (0 for immediate).",
+            MCPToolParam.ParamType.Number
+        )]
+        public float? PositionTransitionTime;
 
         [MCPToolParam(
             "rotation_x",
@@ -54,6 +62,13 @@ namespace InGameMCP.Tools
         )]
         public float? RotationZ;
 
+        [MCPToolParam(
+            "rotation_transition_time",
+            "Optional seconds to ease toward the new rotation (0 for immediate).",
+            MCPToolParam.ParamType.Number
+        )]
+        public float? RotationTransitionTime;
+
         [MCPToolParam("scale_x", "Optional local scale X value.", MCPToolParam.ParamType.Number)]
         public float? ScaleX;
 
@@ -63,29 +78,20 @@ namespace InGameMCP.Tools
         [MCPToolParam("scale_z", "Optional local scale Z value.", MCPToolParam.ParamType.Number)]
         public float? ScaleZ;
 
+        [MCPToolParam(
+            "scale_transition_time",
+            "Optional seconds to ease toward the new scale (0 for immediate).",
+            MCPToolParam.ParamType.Number
+        )]
+        public float? ScaleTransitionTime;
+
         protected override UniTask<ContentBase[]> ExecuteTool(
             object id,
             HttpListenerContext ctx,
             IReadOnlyDictionary<string, object> rawParameters
         )
         {
-            if (string.IsNullOrWhiteSpace(Path))
-            {
-                throw new MCPToolExecutionException(-32602, "path parameter is required.");
-            }
-
-            var scene = SceneManager.GetActiveScene();
-            if (!scene.IsValid())
-            {
-                throw new MCPToolExecutionException(-32001, "Active scene is invalid.");
-            }
-
-            var roots = scene.GetRootGameObjects();
-            if (!TryFindTransform(roots, Path, out var transform))
-            {
-                throw new MCPToolExecutionException(-32602, $"Transform '{Path}' was not found.");
-            }
-
+            var transform = ResolveTransformOrThrow(Path);
             var appliedChanges = new List<string>();
 
             if (ApplyPosition(transform))
@@ -123,19 +129,22 @@ namespace InGameMCP.Tools
             }
 
             var position = target.position;
-            if (PositionX.HasValue)
+            var targetPosition = new Vector3(
+                PositionX.HasValue ? PositionX.Value : position.x,
+                PositionY.HasValue ? PositionY.Value : position.y,
+                PositionZ.HasValue ? PositionZ.Value : position.z
+            );
+            if (PositionTransitionTime.HasValue && PositionTransitionTime.Value > 0f)
             {
-                position.x = PositionX.Value;
+                TransformTweenRunner.GetOrCreate(target).StartPositionTween(
+                    targetPosition,
+                    PositionTransitionTime.Value
+                );
             }
-            if (PositionY.HasValue)
+            else
             {
-                position.y = PositionY.Value;
+                target.position = targetPosition;
             }
-            if (PositionZ.HasValue)
-            {
-                position.z = PositionZ.Value;
-            }
-            target.position = position;
             return true;
         }
 
@@ -147,19 +156,22 @@ namespace InGameMCP.Tools
             }
 
             var rotation = target.eulerAngles;
-            if (RotationX.HasValue)
+            var targetRotation = new Vector3(
+                RotationX.HasValue ? RotationX.Value : rotation.x,
+                RotationY.HasValue ? RotationY.Value : rotation.y,
+                RotationZ.HasValue ? RotationZ.Value : rotation.z
+            );
+            if (RotationTransitionTime.HasValue && RotationTransitionTime.Value > 0f)
             {
-                rotation.x = RotationX.Value;
+                TransformTweenRunner.GetOrCreate(target).StartRotationTween(
+                    targetRotation,
+                    RotationTransitionTime.Value
+                );
             }
-            if (RotationY.HasValue)
+            else
             {
-                rotation.y = RotationY.Value;
+                target.eulerAngles = targetRotation;
             }
-            if (RotationZ.HasValue)
-            {
-                rotation.z = RotationZ.Value;
-            }
-            target.eulerAngles = rotation;
             return true;
         }
 
@@ -171,23 +183,52 @@ namespace InGameMCP.Tools
             }
 
             var scale = target.localScale;
-            if (ScaleX.HasValue)
+            var targetScale = new Vector3(
+                ScaleX.HasValue ? ScaleX.Value : scale.x,
+                ScaleY.HasValue ? ScaleY.Value : scale.y,
+                ScaleZ.HasValue ? ScaleZ.Value : scale.z
+            );
+            if (ScaleTransitionTime.HasValue && ScaleTransitionTime.Value > 0f)
             {
-                scale.x = ScaleX.Value;
+                TransformTweenRunner.GetOrCreate(target).StartScaleTween(
+                    targetScale,
+                    ScaleTransitionTime.Value
+                );
             }
-            if (ScaleY.HasValue)
+            else
             {
-                scale.y = ScaleY.Value;
+                target.localScale = targetScale;
             }
-            if (ScaleZ.HasValue)
-            {
-                scale.z = ScaleZ.Value;
-            }
-            target.localScale = scale;
             return true;
         }
 
-        static bool TryFindTransform(GameObject[] roots, string path, out Transform transform)
+        internal static Transform ResolveTransformOrThrow(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                throw new MCPToolExecutionException(-32602, "path parameter is required.");
+            }
+
+            var scene = SceneManager.GetActiveScene();
+            if (!scene.IsValid())
+            {
+                throw new MCPToolExecutionException(-32001, "Active scene is invalid.");
+            }
+
+            var roots = scene.GetRootGameObjects();
+            if (!TryFindTransform(roots, path, out var transform))
+            {
+                throw new MCPToolExecutionException(-32602, $"Transform '{path}' was not found.");
+            }
+
+            return transform;
+        }
+
+        internal static bool TryFindTransform(
+            GameObject[] roots,
+            string path,
+            out Transform transform
+        )
         {
             var segments = path.Split('/');
             transform = null;

@@ -8,13 +8,9 @@ A lightweight reference implementation for embedding Model Context Protocol (MCP
    - Launch the project in the Unity Editor.
    - Pick or create a scene you want to instrument with MCP access.
 
-2. **Add the Host Behaviour**
-   - In `Assets/Tests` you will find `TestLogMCPHost`.
-   - Drop it onto a GameObject in your scene and, if needed, change the exposed `port` field.
-   - When the scene starts Play mode the behaviour spins up `MCPHost`, registers default HTTP handlers (`/health`) and a dedicated `MCPHandler` for MCP RPC traffic.
-
 3. **Register MCP Tools**
-   - The sample host registers `LogMCPTool` plus a few utility tools (scene hierarchy dump, transform editing).
+   - The sample host registers `LogMCPTool` plus several utility tools (scene hierarchy dump, transform editing, component inspector read/write for strings/bools/numbers/vectors/colors, mesh material inspection/updating).
+   - Transform edits can be targeted per-property: use `transform_position_update`, `transform_rotation_update`, or `transform_scale_update` when you only need to tweak one aspect, or `transform_change` if you truly need to adjust multiple in a single call. Use `transform_inspect` first when you need to grab the current position/rotation/scale values as a starting point, and include `*_transition_time` if you want the change animated over that duration.
    - To add your own functionality, create another class that derives from `MCPToolBase`, describe its parameters via the `[MCPToolParam]` attributes, and override `ExecuteTool` (which returns a `UniTask<ContentBase[]>`) to perform the action.
    - Register new tools by calling `_mcpHandler.RegisterTool(new YourTool())` before `StartHTTPServer`.
 

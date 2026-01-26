@@ -1,0 +1,71 @@
+using System.Collections.Generic;
+using System.Net;
+using System.Text;
+using Cysharp.Threading.Tasks;
+using InGameMCP.Core.Dtos.MCP;
+using InGameMCP.Core.MCP.MCPTool;
+using InGameMCP.Core.MCP.MCPTool.Attributes;
+using InGameMCP.Tools.ObjectTransform;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+namespace InGameMCP.Tools.Inspect
+{
+    [MCPTool(
+        toolName: "inspector_component_list",
+        description: "Lists all component types attached to a GameObject."
+    )]
+    public class InspectorComponentListTool : MCPToolBase
+    {
+        [MCPToolParam(
+            "path",
+            "Hierarchy path to the GameObject.",
+            MCPToolParam.ParamType.String,
+            true
+        )]
+        public string Path;
+
+        protected override UniTask<ContentBase[]> ExecuteTool(
+            object id,
+            HttpListenerContext ctx,
+            IReadOnlyDictionary<string, object> rawParameters
+        )
+        {
+            if (string.IsNullOrWhiteSpace(Path))
+            {
+                throw new MCPToolExecutionException(-32602, "path parameter is required.");
+            }
+
+            var scene = SceneManager.GetActiveScene();
+            if (!scene.IsValid())
+            {
+                throw new MCPToolExecutionException(-32001, "Active scene is invalid.");
+            }
+
+            if (
+                !TransformChangeMCPTool.TryFindTransform(
+                    scene.GetRootGameObjects(),
+                    Path,
+                    out var transform
+                )
+            )
+            {
+                throw new MCPToolExecutionException(-32602, $"Transform '{Path}' was not found.");
+            }
+
+            var components = transform.GetComponents<Component>();
+            var sb = new StringBuilder();
+            sb.AppendLine($"Components on '{Path}':");
+            foreach (var component in components)
+            {
+                if (component == null)
+                {
+                    continue;
+                }
+                sb.AppendLine(component.GetType().FullName);
+            }
+
+            return UniTask.FromResult(new ContentBase[] { new ContentText(sb.ToString()) });
+        }
+    }
+}

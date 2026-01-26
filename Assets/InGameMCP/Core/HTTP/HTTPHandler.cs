@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using System.IO;
+using Cysharp.Threading.Tasks;
 using InGameMCP.Core.Dtos;
 using InGameMCP.Utils.HTTPUtils;
 using Newtonsoft.Json;
@@ -66,6 +68,12 @@ namespace InGameMCP.Core.HTTP
             return (true, "");
         }
 
+        public virtual UniTask HandleAsync(HttpListenerContext context)
+        {
+            Handle(context);
+            return UniTask.CompletedTask;
+        }
+
         public virtual void Handle(HttpListenerContext context)
         {
             HTTPUtils.SafeWriteJson(
@@ -80,6 +88,28 @@ namespace InGameMCP.Core.HTTP
     {
         protected HTTPHandler(string path, string method)
             : base(path, method) { }
+
+        public override async UniTask HandleAsync(HttpListenerContext ctx)
+        {
+            var requestBody = new StreamReader(ctx.Request.InputStream).ReadToEnd();
+
+            TRequest reqObj;
+            try
+            {
+                reqObj = JsonConvert.DeserializeObject<TRequest>(requestBody);
+            }
+            catch
+            {
+                HTTPUtils.SafeWriteJson(
+                    ctx,
+                    HttpStatusCode.BadRequest,
+                    new ErrorResponse("Invalid request body")
+                );
+                return;
+            }
+
+            await HandleAsync(ctx, reqObj);
+        }
 
         public override void Handle(HttpListenerContext ctx)
         {
@@ -101,6 +131,12 @@ namespace InGameMCP.Core.HTTP
             }
 
             Handle(ctx, reqObj);
+        }
+
+        public virtual UniTask HandleAsync(HttpListenerContext ctx, TRequest request)
+        {
+            Handle(ctx, request);
+            return UniTask.CompletedTask;
         }
 
         public virtual void Handle(HttpListenerContext ctx, TRequest request)

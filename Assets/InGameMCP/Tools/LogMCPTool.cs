@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Net;
+using Cysharp.Threading.Tasks;
 using InGameMCP.Core.Dtos.MCP;
 using InGameMCP.Core.MCP.MCPTool;
 using InGameMCP.Core.MCP.MCPTool.Attributes;
@@ -40,7 +41,7 @@ namespace InGameMCP.Tools
             _logger = logger;
         }
 
-        protected override ContentBase[] ExecuteTool(
+        protected override UniTask<ContentBase[]> ExecuteTool(
             object id,
             HttpListenerContext ctx,
             IReadOnlyDictionary<string, object> rawParameters
@@ -57,7 +58,9 @@ namespace InGameMCP.Tools
             var level = ResolveLevel(Level);
             WriteToUnityLog(level, Message);
 
-            return new ContentBase[] { new ContentText($"Logged message as {level} level.") };
+            return UniTask.FromResult(
+                new ContentBase[] { new ContentText($"Logged message as {level} level.") }
+            );
         }
 
         static LogLevel ResolveLevel(string levelInput)

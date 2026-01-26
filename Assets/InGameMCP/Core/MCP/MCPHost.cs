@@ -2,15 +2,21 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading;
+using Cysharp.Threading.Tasks;
 using InGameMCP.Core.Dtos;
 using InGameMCP.Core.HTTP;
 using InGameMCP.Core.HTTP.Handlers;
 using InGameMCP.Utils.HTTPUtils;
+using UnityEngine.LowLevel;
+using UnityEngine;
 
 namespace InGameMCP.Core.MCP
 {
     public class MCPHost
     {
+        static bool _playerLoopInitialized;
+        internal static SynchronizationContext UnityContext { get; private set; }
+
         public string HostAddress { get; set; }
         public int Port { get; set; }
         public List<HTTPHandler> Handlers { get; private set; } = new List<HTTPHandler>();
@@ -21,8 +27,23 @@ namespace InGameMCP.Core.MCP
 
         public MCPHost(int port, string hostAddress = "localhost")
         {
+            EnsurePlayerLoopInitialized();
             HostAddress = hostAddress;
             Port = port;
+        }
+
+        static void EnsurePlayerLoopInitialized()
+        {
+            if (_playerLoopInitialized)
+            {
+                return;
+            }
+
+            UnityContext = SynchronizationContext.Current ?? new SynchronizationContext();
+            var playerLoop = PlayerLoop.GetCurrentPlayerLoop();
+            PlayerLoopHelper.Initialize(ref playerLoop);
+            PlayerLoop.SetPlayerLoop(playerLoop);
+            _playerLoopInitialized = true;
         }
 
         public void SetLogger(ILogger logger)
@@ -85,7 +106,7 @@ namespace InGameMCP.Core.MCP
                 var ctx = _httpListener.GetContext();
                 try
                 {
-                    ThreadPool.QueueUserWorkItem(_ => SafeHandleContext(ctx));
+                    ThreadPool.QueueUserWorkItem(_ => SafeHandleContextAsync(ctx).Forget());
                 }
                 catch (HttpListenerException)
                 {
@@ -102,11 +123,11 @@ namespace InGameMCP.Core.MCP
             }
         }
 
-        void SafeHandleContext(HttpListenerContext ctx)
+        async UniTask SafeHandleContextAsync(HttpListenerContext ctx)
         {
             try
             {
-                HandleContext(ctx);
+                await HandleContextAsync(ctx);
             }
             catch (Exception e)
             {
@@ -116,7 +137,7 @@ namespace InGameMCP.Core.MCP
             }
         }
 
-        void HandleContext(HttpListenerContext ctx)
+        async UniTask HandleContextAsync(HttpListenerContext ctx)
         {
             var path = ctx.Request.Url.AbsolutePath;
             var method = ctx.Request.HttpMethod;
@@ -128,7 +149,7 @@ namespace InGameMCP.Core.MCP
                     var (isValid, errorMessage) = handler.VerifyRequest(ctx.Request);
                     if (isValid)
                     {
-                        handler.Handle(ctx);
+                        await handler.HandleAsync(ctx);
                         return;
                     }
                     else

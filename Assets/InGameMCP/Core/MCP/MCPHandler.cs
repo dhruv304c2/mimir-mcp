@@ -2,13 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Web;
-using InGameMCP.Core.Dtos;
+using Cysharp.Threading.Tasks;
 using InGameMCP.Core;
 using InGameMCP.Core.Dtos.MCP;
 using InGameMCP.Core.HTTP;
 using InGameMCP.Core.MCP.MCPTool;
 using InGameMCP.Utils.HTTPUtils;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace InGameMCP.Core.MCP
@@ -73,7 +72,7 @@ namespace InGameMCP.Core.MCP
             return false;
         }
 
-        public override void Handle(HttpListenerContext ctx, MCPRequest request)
+        public override async UniTask HandleAsync(HttpListenerContext ctx, MCPRequest request)
         {
             if (request == null)
             {
@@ -170,7 +169,11 @@ namespace InGameMCP.Core.MCP
                             }
                         }
 
-                        tool.HandleToolCall(mcpRequest.id, ctx, parameters);
+                        _logger?.LogInfo(
+                            $"Executing MCP tool '{toolName}' with id={mcpRequest.id ?? "<notification>"}."
+                        );
+
+                        await tool.HandleToolCall(mcpRequest.id, ctx, parameters);
                     }
                     else
                     {

@@ -14,8 +14,8 @@ A lightweight reference implementation for embedding Model Context Protocol (MCP
    - When the scene starts Play mode the behaviour spins up `MCPHost`, registers default HTTP handlers (`/health`) and a dedicated `MCPHandler` for MCP RPC traffic.
 
 3. **Register MCP Tools**
-   - The sample host registers `TestLogMCPTool`, which simply logs messages back into Unity.
-   - To add your own functionality, create another class that derives from `MCPToolBase`, describe its parameters via `ToolParams`, and override `HandleToolCall` to perform the action.
+   - The sample host registers `LogMCPTool` plus a few utility tools (scene hierarchy dump, transform editing).
+   - To add your own functionality, create another class that derives from `MCPToolBase`, describe its parameters via the `[MCPToolParam]` attributes, and override `ExecuteTool` (which returns a `UniTask<ContentBase[]>`) to perform the action.
    - Register new tools by calling `_mcpHandler.RegisterTool(new YourTool())` before `StartHTTPServer`.
 
 4. **Play the Scene**

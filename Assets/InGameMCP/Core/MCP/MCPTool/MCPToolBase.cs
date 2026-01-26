@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Reflection;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using InGameMCP.Core.Dtos.MCP;
 using InGameMCP.Utils.HTTPUtils;
 
@@ -164,6 +166,10 @@ namespace InGameMCP.Core.MCP.MCPTool
                         errorMessage = $"Parameter '{attr.ParamName}' is required.";
                         return false;
                     }
+                    else
+                    {
+                        SetMemberValue(binding.Member, GetDefaultValue(binding.MemberType));
+                    }
                     continue;
                 }
 
@@ -258,7 +264,15 @@ namespace InGameMCP.Core.MCP.MCPTool
             }
         }
 
-        public void HandleToolCall(
+        object GetDefaultValue(Type type)
+        {
+            var targetType = Nullable.GetUnderlyingType(type) ?? type;
+            return type.IsValueType && Nullable.GetUnderlyingType(type) == null
+                ? Activator.CreateInstance(type)
+                : null;
+        }
+
+        public async UniTask HandleToolCall(
             object id,
             HttpListenerContext ctx,
             Dictionary<string, object> parameters
@@ -277,9 +291,15 @@ namespace InGameMCP.Core.MCP.MCPTool
                 return;
             }
 
+            await SwitchToUnityThreadAsync();
+
             try
             {
-                var content = ExecuteTool(id, ctx, parameters ?? new Dictionary<string, object>());
+                var content = await ExecuteTool(
+                    id,
+                    ctx,
+                    parameters ?? new Dictionary<string, object>()
+                );
 
                 if (content == null)
                 {
@@ -317,7 +337,25 @@ namespace InGameMCP.Core.MCP.MCPTool
             }
         }
 
-        protected abstract ContentBase[] ExecuteTool(
+        async UniTask SwitchToUnityThreadAsync()
+        {
+            var unityContext = MCPHost.UnityContext;
+            if (unityContext == null)
+            {
+                return;
+            }
+
+            if (SynchronizationContext.Current == unityContext)
+            {
+                return;
+            }
+
+            var tcs = new UniTaskCompletionSource<bool>();
+            unityContext.Post(_ => tcs.TrySetResult(true), null);
+            await tcs.Task;
+        }
+
+        protected abstract UniTask<ContentBase[]> ExecuteTool(
             object id,
             HttpListenerContext ctx,
             IReadOnlyDictionary<string, object> rawParameters

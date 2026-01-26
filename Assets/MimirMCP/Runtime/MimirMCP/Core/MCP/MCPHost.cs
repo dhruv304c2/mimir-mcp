@@ -22,7 +22,8 @@ namespace MimirMCP.Core.MCP
         public List<HTTPHandler> Handlers { get; private set; } = new List<HTTPHandler>();
 
         HttpListener _httpListener;
-        Thread _listenerThread;
+        CancellationTokenSource _listenerCts;
+        UniTask _listenerTask;
         ILogger _logger;
 
         public MCPHost(int port, string hostAddress = "localhost")
@@ -79,18 +80,20 @@ namespace MimirMCP.Core.MCP
             _httpListener = new HttpListener();
             _httpListener.Prefixes.Add($"http://{HostAddress}:{Port}/");
             _httpListener.Start();
-
-            _listenerThread = new Thread(ListenLoop)
-            {
-                IsBackground = true,
-                Name = "MCPHost HTTP Listener",
-            };
-
-            _listenerThread.Start();
+            _listenerCts = new CancellationTokenSource();
+            _listenerTask = ListenLoopAsync(_listenerCts.Token);
+            _listenerTask.Forget();
         }
 
         public void StopHTTPServer()
         {
+            if (_listenerCts != null)
+            {
+                _listenerCts.Cancel();
+                _listenerCts.Dispose();
+                _listenerCts = null;
+            }
+
             if (_httpListener != null && _httpListener.IsListening)
             {
                 _httpListener.Stop();
@@ -99,26 +102,38 @@ namespace MimirMCP.Core.MCP
             _logger?.LogInfo("HTTP Server stopped.");
         }
 
-        void ListenLoop()
+        async UniTask ListenLoopAsync(CancellationToken cancellationToken)
         {
-            while (_httpListener.IsListening)
+            while (_httpListener != null && _httpListener.IsListening && !cancellationToken.IsCancellationRequested)
             {
-                var ctx = _httpListener.GetContext();
+                HttpListenerContext ctx = null;
                 try
                 {
-                    ThreadPool.QueueUserWorkItem(_ => SafeHandleContextAsync(ctx).Forget());
+                    ctx = await _httpListener.GetContextAsync().AsUniTask();
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    await UniTask.SwitchToMainThread();
+                    await SafeHandleContextAsync(ctx);
                 }
                 catch (HttpListenerException)
                 {
                     break;
                 }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
                 catch (Exception e)
                 {
-                    HTTPUtils.SafeWriteJson(
-                        ctx,
-                        HttpStatusCode.InternalServerError,
-                        new ErrorResponse(e.Message)
-                    );
+                    _logger?.LogError($"HTTP listener error: {e.Message}");
+                    if (ctx != null)
+                    {
+                        HTTPUtils.SafeWriteJson(
+                            ctx,
+                            HttpStatusCode.InternalServerError,
+                            new ErrorResponse(e.Message)
+                        );
+                    }
                 }
             }
         }

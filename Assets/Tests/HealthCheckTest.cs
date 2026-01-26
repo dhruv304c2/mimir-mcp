@@ -1,5 +1,5 @@
-using InGameMCP.Core;
-using InGameMCP.Core.MCP;
+using MimirMCP.Core;
+using MimirMCP.Core.MCP;
 using UnityEngine;
 
 public class HealthCheckTest : MonoBehaviour

@@ -1,4 +1,5 @@
 using InGameMCP.Core.MCP;
+using InGameMCP.Tools;
 using UnityEngine;
 
 public class TestLogMCPHost : MonoBehaviour
@@ -18,7 +19,7 @@ public class TestLogMCPHost : MonoBehaviour
         _mcpHost.RegisterDefaultHandlers();
 
         _mcpHandler = new MCPHandler(logger: logger);
-        _mcpHandler.RegisterTool(new TestLogMCPTool(logger));
+        _mcpHandler.RegisterTool(new LogMCPTool(logger));
         _mcpHost.UseMCPHandler(_mcpHandler);
 
         _mcpHost.StartHTTPServer();

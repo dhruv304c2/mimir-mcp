@@ -1,6 +1,5 @@
 using System.Net;
 using InGameMCP.Core.Dtos;
-using InGameMCP.Core.HTTP;
 using InGameMCP.Utils.HTTPUtils;
 
 namespace InGameMCP.Core.HTTP.Handlers

@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Net;
 using System.Text;
 using Cysharp.Threading.Tasks;
 using MimirMCP.Core.Dtos.MCP;
@@ -26,8 +25,6 @@ namespace MimirMCP.Tools.Inspect
         public string Path;
 
         protected override UniTask<ContentBase[]> ExecuteTool(
-            object id,
-            HttpListenerContext ctx,
             IReadOnlyDictionary<string, object> rawParameters
         )
         {

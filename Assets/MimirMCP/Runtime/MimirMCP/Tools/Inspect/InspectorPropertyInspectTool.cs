@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Reflection;
 using Cysharp.Threading.Tasks;
 using MimirMCP.Core.Dtos.MCP;
@@ -36,8 +35,6 @@ namespace MimirMCP.Tools.Inspect
         public string ComponentTypeName;
 
         protected override UniTask<ContentBase[]> ExecuteTool(
-            object id,
-            HttpListenerContext ctx,
             IReadOnlyDictionary<string, object> rawParameters
         )
         {

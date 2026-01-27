@@ -295,11 +295,7 @@ namespace MimirMCP.Core.MCP.MCPTool
 
             try
             {
-                var content = await ExecuteTool(
-                    id,
-                    ctx,
-                    parameters ?? new Dictionary<string, object>()
-                );
+                var content = await ExecuteTool(parameters ?? new Dictionary<string, object>());
 
                 if (content == null)
                 {
@@ -356,8 +352,6 @@ namespace MimirMCP.Core.MCP.MCPTool
         }
 
         protected abstract UniTask<ContentBase[]> ExecuteTool(
-            object id,
-            HttpListenerContext ctx,
             IReadOnlyDictionary<string, object> rawParameters
         );
 

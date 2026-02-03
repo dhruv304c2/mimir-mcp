@@ -1,11 +1,14 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using MimirMCP.Core.Database;
 using MimirMCP.Core.Dtos;
 using MimirMCP.Core.HTTP;
 using MimirMCP.Core.HTTP.Handlers;
+using MimirMCP.Tools.Database;
 using MimirMCP.Utils.HTTPUtils;
 using UnityEngine.LowLevel;
 using UnityEngine;
@@ -25,6 +28,8 @@ namespace MimirMCP.Core.MCP
         CancellationTokenSource _listenerCts;
         UniTask _listenerTask;
         ILogger _logger;
+        MCPHandler _mcpHandler;
+        readonly ConcurrentDictionary<Type, object> _databases = new ConcurrentDictionary<Type, object>();
 
         public MCPHost(int port, string hostAddress = "localhost")
         {
@@ -52,6 +57,76 @@ namespace MimirMCP.Core.MCP
             _logger = logger;
         }
 
+        /// <summary>
+        /// Registers a database with the host and automatically creates an MCP tool for reading it.
+        /// </summary>
+        /// <typeparam name="T">The type of items stored in the database.</typeparam>
+        /// <param name="databaseName">The name of the database (used in tool naming).</param>
+        /// <param name="database">The database instance to register.</param>
+        /// <exception cref="ArgumentNullException">Thrown when database or databaseName is null.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when a database of the same type is already registered or MCPHandler is not set.</exception>
+        public void RegisterDatabase<T>(string databaseName, IMCPDatabase<T> database)
+            where T : IMCPDatabaseItem
+        {
+            if (database == null)
+                throw new ArgumentNullException(nameof(database));
+
+            if (string.IsNullOrEmpty(databaseName))
+                throw new ArgumentNullException(nameof(databaseName));
+
+            if (_mcpHandler == null)
+                throw new InvalidOperationException("MCPHandler must be set via UseMCPHandler before registering databases.");
+
+            var type = typeof(T);
+
+            if (!_databases.TryAdd(type, database))
+            {
+                throw new InvalidOperationException($"A database for type {type.Name} is already registered.");
+            }
+
+            // Create and register the read tool
+            var readTool = new ReadDatabaseMCPTool<T>(database, databaseName);
+            _mcpHandler.RegisterTool(readTool);
+
+            _logger?.LogInfo($"Registered database '{databaseName}' for type {type.Name}");
+        }
+
+        /// <summary>
+        /// Gets a database by its item type.
+        /// </summary>
+        /// <typeparam name="T">The type of items stored in the database.</typeparam>
+        /// <returns>The database instance.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when no database is found for the specified type.</exception>
+        public IMCPDatabase<T> GetDatabase<T>() where T : IMCPDatabaseItem
+        {
+            if (TryGetDatabase<T>(out var database))
+            {
+                return database;
+            }
+
+            throw new InvalidOperationException($"No database found for type {typeof(T).Name}. Register it first using RegisterDatabase.");
+        }
+
+        /// <summary>
+        /// Tries to get a database by its item type.
+        /// </summary>
+        /// <typeparam name="T">The type of items stored in the database.</typeparam>
+        /// <param name="database">The database instance if found.</param>
+        /// <returns>True if the database was found, false otherwise.</returns>
+        public bool TryGetDatabase<T>(out IMCPDatabase<T> database) where T : IMCPDatabaseItem
+        {
+            var type = typeof(T);
+
+            if (_databases.TryGetValue(type, out var dbObject))
+            {
+                database = (IMCPDatabase<T>)dbObject;
+                return true;
+            }
+
+            database = null;
+            return false;
+        }
+
         void RegisterHandler(HTTPHandler handler)
         {
             if (Handlers.Contains(handler))
@@ -65,6 +140,7 @@ namespace MimirMCP.Core.MCP
 
         public void UseMCPHandler(MCPHandler handler)
         {
+            _mcpHandler = handler;
             RegisterHandler(new MCPDiscoveryHandler());
             RegisterHandler(handler);
         }

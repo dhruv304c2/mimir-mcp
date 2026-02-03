@@ -61,6 +61,169 @@ Mimir MCP is an open-source Unity framework for crafting bespoke Model Context P
 
 Pick the helper that matches the control surface you want to expose. You can call multiple helpers or register additional bespoke tools to build a curated API surface for your team or automated agents.
 
+## Database Abstraction
+
+MimirMCP includes a powerful database abstraction system for exposing Unity scene objects to MCP tools. This allows AI agents to query and interact with collections of MonoBehaviours in your scene.
+
+### Core Concepts
+
+The database system consists of several key interfaces and classes:
+
+- **`IMCPDatabaseItem`** – Interface for objects that can be stored in a database. Requires an `ObjectId` property and `ToJson()` method.
+- **`MCPMonoBehaviourDatabaseItem`** – Base MonoBehaviour class that implements `IMCPDatabaseItem` with automatic JSON serialization.
+- **`IMCPDatabase<T>`** – Generic interface for type-safe database operations (add, get, remove items).
+- **`IMCPScannableDatabase<T>`** – Extended interface that supports configurable read strategies through `ReadFunction`.
+- **`MCPMonoBehaviourDatabase<T>`** – Flexible implementation that can populate from any source:
+  - Unity scene scanning via `SetReadFromSceneHierarchy()`
+  - Custom data sources via `ReadFunction` delegate
+- **`MCPHost.RegisterDatabase<T>`** – Registers a database and automatically creates an MCP tool for reading it.
+
+### Basic Usage
+
+1. **Create a database item class**:
+   ```csharp
+   using MimirMCP.Core.Database;
+   using UnityEngine;
+
+   public class Character : MCPMonoBehaviourDatabaseItem
+   {
+       [SerializeField]
+       public string characterName;
+
+       [SerializeField]
+       [TextArea]
+       public string description;
+   }
+   ```
+
+2. **Register the database with MCPHost**:
+   ```csharp
+   // Method 1: Using the convenience factory method (for MonoBehaviours)
+   var characterDb = MCPMonoBehaviourDatabase<Character>.CreateFromScene();
+   _mcpHost.RegisterDatabase("characters", characterDb);
+
+   // Method 2: Manual configuration with custom options
+   var characterDb = new MCPMonoBehaviourDatabase<Character>();
+   characterDb.SetReadFromSceneHierarchy(
+       sortMode: FindObjectsSortMode.InstanceID,
+       includeInactive: true
+   );
+   characterDb.Read();
+   _mcpHost.RegisterDatabase("characters", characterDb);
+
+   // Method 3: Custom read function (for non-MonoBehaviour types or custom sources)
+   var itemDb = new MCPMonoBehaviourDatabase<InventoryItem>();
+   itemDb.ReadFunction = () => {
+       // Custom logic to populate database from any source
+       itemDb.AddItem(new InventoryItem { name = "Sword" });
+       itemDb.AddItem(new InventoryItem { name = "Shield" });
+   };
+   itemDb.Read();
+   _mcpHost.RegisterDatabase("inventory", itemDb);
+   ```
+
+   This automatically creates a tool named `read_characters_database` that AI agents can use.
+
+3. **Retrieve items programmatically**:
+   ```csharp
+   // Get the database
+   var db = _mcpHost.GetDatabase<Character>();
+
+   // Get a specific item by ID
+   var character = db.GetItemById(objectId);
+
+   // Get all items
+   var allCharacters = db.All();
+   ```
+
+### MCP Tool Usage
+
+When you register a database, a corresponding MCP tool is automatically created. For the example above:
+
+- **Tool name**: `read_characters_database`
+- **Parameters**:
+  - `object_id` (optional) – Retrieve a specific item by its ID
+- **Returns**: JSON representation of the item(s)
+
+Example tool call to get all characters:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "1",
+  "method": "tools/call",
+  "params": {
+    "tool_name": "read_characters_database",
+    "arguments": {}
+  }
+}
+```
+
+Example tool call to get a specific character:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "2",
+  "method": "tools/call",
+  "params": {
+    "tool_name": "read_characters_database",
+    "arguments": {
+      "object_id": "12345-6789-abcd-efgh"
+    }
+  }
+}
+```
+
+### Advanced Features
+
+**Custom Read Functions**:
+The database system supports flexible read strategies through the `ReadFunction` property:
+
+```csharp
+// Read from a JSON file
+database.ReadFunction = () => {
+    var json = File.ReadAllText("data/characters.json");
+    var items = JsonConvert.DeserializeObject<List<Character>>(json);
+    foreach (var item in items) {
+        database.AddItem(item);
+    }
+};
+
+// Read from a web service
+database.ReadFunction = async () => {
+    var response = await httpClient.GetStringAsync("https://api.example.com/characters");
+    // Parse and add items...
+};
+
+// Combine multiple sources
+database.ReadFunction = () => {
+    // First read from scene
+    database.SetReadFromSceneHierarchy();
+    database.Read();
+
+    // Then add items from other sources
+    database.AddItem(specialCharacter);
+};
+```
+
+**Multiple Databases**:
+```csharp
+// Register multiple database types
+_mcpHost.RegisterDatabase("characters", MCPMonoBehaviourDatabase<Character>.CreateFromScene());
+_mcpHost.RegisterDatabase("locations", MCPMonoBehaviourDatabase<Location>.CreateFromScene());
+_mcpHost.RegisterDatabase("items", new MCPMonoBehaviourDatabase<InventoryItem> {
+    ReadFunction = LoadInventoryFromSaveGame
+});
+```
+
+**Thread Safety**: All database operations are thread-safe using reader-writer locks, allowing safe concurrent access from MCP tool calls.
+
+### Best Practices
+
+1. **Configure read strategy appropriately** – Use `SetReadFromSceneHierarchy()` for scene objects, or set a custom `ReadFunction` for other data sources.
+2. **Use meaningful names** – The database name becomes part of the MCP tool name (e.g., "characters" → "read_characters_database").
+3. **Keep items lightweight** – The `ToJson()` method is called frequently, so avoid expensive serialization.
+4. **One type per database** – Each Type can only have one registered database in MCPHost.
+
 ## Calling The Hosted MCP API
 
 Once the host is running you interact with it over HTTP. All paths are rooted at the host/port you configured.

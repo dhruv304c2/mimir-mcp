@@ -54,8 +54,8 @@ namespace MimirMCP.Core.MCP.MCPTool
 
     public abstract class MCPToolBase
     {
-        public string ToolName { get; private set; }
-        public string ToolDescription { get; private set; }
+        public string ToolName { get; protected set; }
+        public string ToolDescription { get; protected set; }
         public ILogger Logger { get; protected set; }
         public List<MCPToolParam> ToolParams { get; protected set; } = new List<MCPToolParam>();
         readonly Dictionary<string, ParameterBinding> _parameterBindings = new(

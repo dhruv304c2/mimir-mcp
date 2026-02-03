@@ -12,19 +12,25 @@ Mimir MCP is an open-source Unity framework for crafting bespoke Model Context P
 
 ## Installation (Git Package)
 
+### Prerequisites
+
+Before installing Mimir MCP, ensure you have the following packages installed in your Unity project:
+
+1. **Newtonsoft JSON for Unity** - Required for JSON serialization
+   - Open **Window > Package Manager > + > Add package from git URL...**
+   - Paste: `com.unity.nuget.newtonsoft-json@3.2.1`
+   - Click **Add**
+
+2. **UniTask** - Required for async/await support
+   - Follow the installation instructions at: https://github.com/Cysharp/UniTask#install-via-git-url
+   - This package requires OpenUPM registry setup
+
+### Installation Steps
+
 1. Open your target Unity project.
 2. Go to **Window ▸ Package Manager ▸ + ▸ Add package from Git URL…**
 3. Paste `https://github.com/dhruv304c2/mimir-mcp.git?path=/Assets/MimirMCP` and confirm.
-   - Unity clones the repository, but only imports the `Assets/MimirMCP` payload as a package named `com.mimir.mimirmcp`.
-4. Ensure your `Packages/manifest.json` also references UniTask if it is not already present:
-   ```json
-   {
-     "dependencies": {
-       "com.cysharp.unitask": "2.5.4",
-       "com.mimir.mimirmcp": "https://github.com/dhruv304c2/mimir-mcp.git?path=/Assets/MimirMCP"
-     }
-   }
-   ```
+4. Verify that both prerequisite packages (Newtonsoft JSON and UniTask) are installed before proceeding.
 5. Enter Play Mode once to let Unity generate asmdef caches. You now have the runtime in your project and can add the host behaviour to any scene.
 
 ## Getting Started In Unity

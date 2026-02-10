@@ -26,5 +26,8 @@ namespace MimirMCP.Core.Dtos.MCP
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public string description;
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public Property items;
     }
 }

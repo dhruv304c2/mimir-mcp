@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using MimirMCP.Core.Dtos.MCP;
 using MimirMCP.Utils.HTTPUtils;
+using Newtonsoft.Json.Linq;
 
 namespace MimirMCP.Core.MCP.MCPTool
 {
@@ -16,6 +18,7 @@ namespace MimirMCP.Core.MCP.MCPTool
             String,
             Number,
             Boolean,
+            ArrayString,
         }
 
         public string ParamName { get; private set; }
@@ -33,6 +36,8 @@ namespace MimirMCP.Core.MCP.MCPTool
                     return "number";
                 case ParamType.Boolean:
                     return "boolean";
+                case ParamType.ArrayString:
+                    return "array";
                 default:
                     return "object";
             }
@@ -240,6 +245,32 @@ namespace MimirMCP.Core.MCP.MCPTool
                             return true;
                         }
                         break;
+                    case MCPToolParam.ParamType.ArrayString:
+                        // Handle JArray from JSON parsing
+                        if (rawValue is JArray jArray)
+                        {
+                            convertedValue = jArray.Select(item => item.ToString()).ToList();
+                            return true;
+                        }
+                        // Handle native List<string>
+                        if (rawValue is List<string> stringList)
+                        {
+                            convertedValue = stringList;
+                            return true;
+                        }
+                        // Handle IEnumerable<string>
+                        if (rawValue is IEnumerable<string> stringEnumerable)
+                        {
+                            convertedValue = stringEnumerable.ToList();
+                            return true;
+                        }
+                        // Handle string[] array
+                        if (rawValue is string[] stringArray)
+                        {
+                            convertedValue = stringArray.ToList();
+                            return true;
+                        }
+                        break;
                 }
             }
             catch
@@ -365,11 +396,19 @@ namespace MimirMCP.Core.MCP.MCPTool
 
             foreach (var param in ToolParams)
             {
-                inputSchema.properties[param.ParamName] = new Property
+                var property = new Property
                 {
                     type = param.GetTypeAsString(),
                     description = param.ParamDescription,
                 };
+
+                // For array types, specify the items schema
+                if (param.Type == MCPToolParam.ParamType.ArrayString)
+                {
+                    property.items = new Property { type = "string" };
+                }
+
+                inputSchema.properties[param.ParamName] = property;
 
                 if (param.IsRequired)
                 {

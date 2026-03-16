@@ -8,6 +8,7 @@ using Cysharp.Threading.Tasks;
 using MimirMCP.Core.Dtos.MCP;
 using MimirMCP.Utils.HTTPUtils;
 using Newtonsoft.Json.Linq;
+using UnityEngine;
 
 namespace MimirMCP.Core.MCP.MCPTool
 {
@@ -311,13 +312,19 @@ namespace MimirMCP.Core.MCP.MCPTool
         {
             if (!TryBindParameters(parameters, out var bindError))
             {
+                var errorMessage = bindError ?? "Invalid parameters provided.";
                 HTTPUtils.SafeWriteJson(
                     ctx,
                     HttpStatusCode.OK,
-                    new MCPErrorResponse(
-                        id,
-                        new MCPError(-32602, bindError ?? "Invalid parameters provided.")
-                    )
+                    new MCPContentResponse
+                    {
+                        id = id,
+                        result = new MCPContentResult
+                        {
+                            content = new ContentBase[] { new ContentText(errorMessage) },
+                            isError = true,
+                        },
+                    }
                 );
                 return;
             }
@@ -348,18 +355,37 @@ namespace MimirMCP.Core.MCP.MCPTool
                 HTTPUtils.SafeWriteJson(
                     ctx,
                     HttpStatusCode.OK,
-                    new MCPErrorResponse(id, toolEx.Error)
+                    new MCPContentResponse
+                    {
+                        id = id,
+                        result = new MCPContentResult
+                        {
+                            content = new ContentBase[] { new ContentText(toolEx.Message) },
+                            isError = true,
+                        },
+                    }
                 );
             }
             catch (Exception ex)
             {
+                Debug.LogError(
+                    $"[MCPTool:{ToolName ?? GetType().Name}] Internal server error while executing tool. Exception: {ex}"
+                );
                 HTTPUtils.SafeWriteJson(
                     ctx,
-                    HttpStatusCode.InternalServerError,
-                    new MCPErrorResponse(
-                        id,
-                        new MCPError(-32603, ex.Message ?? "Tool execution failed.")
-                    )
+                    HttpStatusCode.OK,
+                    new MCPContentResponse
+                    {
+                        id = id,
+                        result = new MCPContentResult
+                        {
+                            content = new ContentBase[]
+                            {
+                                new ContentText(ex.Message ?? "Tool execution failed."),
+                            },
+                            isError = true,
+                        },
+                    }
                 );
             }
         }

@@ -13,6 +13,7 @@ namespace MimirMCP.Core.Dtos.MCP
     public class MCPContentResult
     {
         public ContentBase[] content;
+        public bool isError;
     }
 
     [Serializable]

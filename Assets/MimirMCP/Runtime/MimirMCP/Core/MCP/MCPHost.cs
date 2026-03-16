@@ -6,6 +6,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using MimirMCP.Core.Database;
 using MimirMCP.Core.Dtos;
+using MimirMCP.Core.Dtos.MCP;
 using MimirMCP.Core.HTTP;
 using MimirMCP.Core.HTTP.Handlers;
 using MimirMCP.Tools.Database;
@@ -222,9 +223,11 @@ namespace MimirMCP.Core.MCP
             }
             catch (Exception e)
             {
-                var error = new ErrorResponse(e.Message);
                 _logger?.LogError(e.Message);
-                HTTPUtils.SafeWriteJson(ctx, HttpStatusCode.InternalServerError, error);
+                HTTPUtils.SafeWriteSse(
+                    ctx,
+                    new MCPErrorResponse(null, new MCPError(-32603, e.Message))
+                );
             }
         }
 

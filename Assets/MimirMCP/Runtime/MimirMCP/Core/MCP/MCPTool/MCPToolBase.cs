@@ -313,9 +313,8 @@ namespace MimirMCP.Core.MCP.MCPTool
             if (!TryBindParameters(parameters, out var bindError))
             {
                 var errorMessage = bindError ?? "Invalid parameters provided.";
-                HTTPUtils.SafeWriteJson(
+                HTTPUtils.SafeWriteSse(
                     ctx,
-                    HttpStatusCode.OK,
                     new MCPContentResponse
                     {
                         id = id,
@@ -340,9 +339,8 @@ namespace MimirMCP.Core.MCP.MCPTool
                     throw new MCPToolExecutionException(-32603, "Tool returned no content.");
                 }
 
-                HTTPUtils.SafeWriteJson(
+                HTTPUtils.SafeWriteSse(
                     ctx,
-                    HttpStatusCode.OK,
                     new MCPContentResponse
                     {
                         id = id,
@@ -352,9 +350,8 @@ namespace MimirMCP.Core.MCP.MCPTool
             }
             catch (MCPToolExecutionException toolEx)
             {
-                HTTPUtils.SafeWriteJson(
+                HTTPUtils.SafeWriteSse(
                     ctx,
-                    HttpStatusCode.OK,
                     new MCPContentResponse
                     {
                         id = id,
@@ -371,9 +368,8 @@ namespace MimirMCP.Core.MCP.MCPTool
                 Debug.LogError(
                     $"[MCPTool:{ToolName ?? GetType().Name}] Internal server error while executing tool. Exception: {ex}"
                 );
-                HTTPUtils.SafeWriteJson(
+                HTTPUtils.SafeWriteSse(
                     ctx,
-                    HttpStatusCode.OK,
                     new MCPContentResponse
                     {
                         id = id,

@@ -147,7 +147,7 @@ namespace MimirMCP.Core.MCP
         {
             if (request == null)
             {
-                WriteMcpError(ctx, null, -32700, "Invalid request body", HttpStatusCode.BadRequest);
+                WriteMcpError(ctx, null, -32700, "Invalid request body");
                 return;
             }
 
@@ -178,11 +178,11 @@ namespace MimirMCP.Core.MCP
                             },
                         }
                     );
-                    HTTPUtils.SafeWriteJson(ctx, HttpStatusCode.OK, initResponse);
+                    HTTPUtils.SafeWriteSse(ctx, initResponse);
                     break;
                 case "ping":
                     var pingResponse = new MCPResultResponse(mcpRequest.id);
-                    HTTPUtils.SafeWriteJson(ctx, HttpStatusCode.OK, pingResponse);
+                    HTTPUtils.SafeWriteSse(ctx, pingResponse);
                     break;
                 case "tools/list":
                     var toolUsages = new List<MCPToolUsage>();
@@ -195,7 +195,7 @@ namespace MimirMCP.Core.MCP
                         id = mcpRequest.id,
                         result = new MCPToolListResult { tools = toolUsages },
                     };
-                    HTTPUtils.SafeWriteJson(ctx, HttpStatusCode.OK, toolResponse);
+                    HTTPUtils.SafeWriteSse(ctx, toolResponse);
                     break;
                 case "tools/call":
                     if (
@@ -272,12 +272,11 @@ namespace MimirMCP.Core.MCP
             HttpListenerContext ctx,
             object id,
             int code,
-            string message,
-            HttpStatusCode statusCode = HttpStatusCode.BadRequest
+            string message
         )
         {
             var error = new MCPErrorResponse(id, new MCPError(code, message));
-            HTTPUtils.SafeWriteJson(ctx, statusCode, error);
+            HTTPUtils.SafeWriteSse(ctx, error);
         }
 
         static string ResolveProtocolVersion(Dictionary<string, object> @params)

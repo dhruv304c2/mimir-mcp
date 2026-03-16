@@ -21,12 +21,37 @@ namespace MimirMCP.Utils.HTTPUtils
             }
         }
 
+        public static void SafeWriteSse(HttpListenerContext ctx, object obj)
+        {
+            try
+            {
+                WriteSse(ctx, obj);
+            }
+            catch (Exception e)
+            {
+                var error = new ErrorResponse(e.Message);
+                WriteSse(ctx, error);
+            }
+        }
+
         static void WriteJson(HttpListenerContext ctx, HttpStatusCode code, object obj)
         {
             var json = JsonConvert.SerializeObject(obj);
             var bytes = Encoding.UTF8.GetBytes(json);
             ctx.Response.StatusCode = (int)code;
             ctx.Response.ContentType = "application/json";
+            ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
+            ctx.Response.Close();
+        }
+
+        static void WriteSse(HttpListenerContext ctx, object obj)
+        {
+            var json = JsonConvert.SerializeObject(obj);
+            var sseMessage = $"data: {json}\n\n";
+            var bytes = Encoding.UTF8.GetBytes(sseMessage);
+            ctx.Response.StatusCode = (int)HttpStatusCode.OK;
+            ctx.Response.ContentType = "text/event-stream";
+            ctx.Response.Headers["Cache-Control"] = "no-cache";
             ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
             ctx.Response.Close();
         }

@@ -14,10 +14,9 @@ namespace MimirMCP.Utils.HTTPUtils
             {
                 WriteJson(ctx, code, obj);
             }
-            catch (Exception e)
+            catch
             {
-                var error = new ErrorResponse(e.Message);
-                WriteJson(ctx, HttpStatusCode.InternalServerError, error);
+                try { ctx.Response.Close(); } catch { }
             }
         }
 
@@ -27,10 +26,9 @@ namespace MimirMCP.Utils.HTTPUtils
             {
                 WriteSse(ctx, obj);
             }
-            catch (Exception e)
+            catch
             {
-                var error = new ErrorResponse(e.Message);
-                WriteSse(ctx, error);
+                try { ctx.Response.Close(); } catch { }
             }
         }
 

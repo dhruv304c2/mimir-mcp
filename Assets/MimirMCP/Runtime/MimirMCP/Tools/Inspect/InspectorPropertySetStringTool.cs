@@ -3,6 +3,7 @@ using Cysharp.Threading.Tasks;
 using MimirMCP.Core.Dtos.MCP;
 using MimirMCP.Core.MCP.MCPTool;
 using MimirMCP.Core.MCP.MCPTool.Attributes;
+using System;
 using UnityEngine;
 
 namespace MimirMCP.Tools.Inspect
@@ -34,8 +35,7 @@ namespace MimirMCP.Tools.Inspect
             var effectiveType = InspectorPropertySetHelpers.GetEffectiveType(field);
             if (effectiveType != typeof(string))
             {
-                throw new MCPToolExecutionException(
-                    -32602,
+                throw new ArgumentException(
                     $"Field '{PropertyName}' is not a string."
                 );
             }

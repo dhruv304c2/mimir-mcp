@@ -312,7 +312,81 @@ Typical success payload:
 }
 ```
 
-Swap `tool_name` and `arguments` to target any other built-in or custom tool. Errors from parameter validation or tool execution are surfaced as standard MCP error objects so your client can react appropriately.
+Swap `tool_name` and `arguments` to target any other built-in or custom tool.
+
+## Error Handling
+
+Mimir MCP automatically catches any exception thrown from your `ExecuteTool` implementation and returns it as an MCP-compliant error response. You never need to worry about error codes or response formatting — just throw standard C# exceptions.
+
+### How It Works
+
+When `ExecuteTool` throws, the framework catches it and returns a **tool-level error** — a normal `tools/call` result with `isError: true`:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "call-1",
+  "result": {
+    "content": [
+      { "type": "text", "text": "Transform 'NonExistent/Path' was not found." }
+    ],
+    "isError": true
+  }
+}
+```
+
+The agent reads the error message in the `content` array and can adapt (retry with different arguments, call a different tool, etc.). This is distinct from **protocol-level errors** (malformed JSON, unknown method) which use the JSON-RPC `error` field and are handled by the framework automatically.
+
+### Which Exception to Throw
+
+Use the standard C# exception that semantically matches the failure:
+
+| Scenario | Exception | Example |
+| --- | --- | --- |
+| Missing or invalid parameter | `ArgumentException` | `throw new ArgumentException("path parameter is required.");` |
+| Object / resource not found | `KeyNotFoundException` | `throw new KeyNotFoundException($"Transform '{path}' was not found.");` |
+| Invalid state or precondition | `InvalidOperationException` | `throw new InvalidOperationException("Active scene is invalid.");` |
+| Operation timed out | `TimeoutException` | `throw new TimeoutException("Physics raycast timed out.");` |
+| Any other failure | `Exception` (or subclass) | `throw new Exception("Something unexpected happened.");` |
+
+### Example
+
+```csharp
+[MCPTool(toolName: "my_tool", description: "Does something cool.")]
+public class MyTool : MCPToolBase
+{
+    [MCPToolParam("target", "Path to the target object.", MCPToolParam.ParamType.String, true)]
+    public string Target;
+
+    protected override UniTask<ContentBase[]> ExecuteTool(
+        IReadOnlyDictionary<string, object> rawParameters)
+    {
+        if (string.IsNullOrWhiteSpace(Target))
+            throw new ArgumentException("target is required.");
+
+        var scene = SceneManager.GetActiveScene();
+        if (!scene.IsValid())
+            throw new InvalidOperationException("No active scene.");
+
+        var go = GameObject.Find(Target);
+        if (go == null)
+            throw new KeyNotFoundException($"GameObject '{Target}' not found.");
+
+        // Do work...
+        return UniTask.FromResult(new ContentBase[] { new ContentText("Done.") });
+    }
+}
+```
+
+### Error Response Layers
+
+| Layer | What triggers it | Response shape |
+| --- | --- | --- |
+| **Parameter binding** | Required param missing, type conversion failure | JSON-RPC `error` with code `-32602` |
+| **Tool execution** | Any exception from `ExecuteTool` | `result.isError = true` with error message in `content` |
+| **Transport / routing** | Malformed JSON, unknown MCP method | JSON-RPC `error` with code `-32700` or `-32603` |
+
+Parameter binding errors are the only tool-related case that produces a protocol-level error, because the request itself was structurally invalid. Everything else from your tool code becomes a tool-level error that agents can read and respond to.
 
 ## Inspiration
 

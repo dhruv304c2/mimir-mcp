@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using MimirMCP.Core.Dtos.MCP;
@@ -45,8 +46,7 @@ namespace MimirMCP.Tools.ObjectTransform
         {
             if (!ScaleX.HasValue && !ScaleY.HasValue && !ScaleZ.HasValue)
             {
-                throw new MCPToolExecutionException(
-                    -32602,
+                throw new ArgumentException(
                     "Specify at least one of scale_x, scale_y, or scale_z."
                 );
             }

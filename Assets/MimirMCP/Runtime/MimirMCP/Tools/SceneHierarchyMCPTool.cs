@@ -3,6 +3,7 @@ using Cysharp.Threading.Tasks;
 using MimirMCP.Core.Dtos.MCP;
 using MimirMCP.Core.MCP.MCPTool;
 using MimirMCP.Core.MCP.MCPTool.Attributes;
+using System;
 using Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -22,7 +23,7 @@ namespace MimirMCP.Tools
             var scene = SceneManager.GetActiveScene();
             if (!scene.IsValid())
             {
-                throw new MCPToolExecutionException(-32001, "Active scene is invalid.");
+                throw new InvalidOperationException("Active scene is invalid.");
             }
 
             var roots = scene.GetRootGameObjects();

@@ -11,6 +11,7 @@ using MimirMCP.Core.HTTP;
 using MimirMCP.Core.HTTP.Handlers;
 using MimirMCP.Tools.Database;
 using MimirMCP.Utils.HTTPUtils;
+using Newtonsoft.Json;
 using UnityEngine.LowLevel;
 using UnityEngine;
 
@@ -205,10 +206,9 @@ namespace MimirMCP.Core.MCP
                     _logger?.LogError($"HTTP listener error: {e.Message}");
                     if (ctx != null)
                     {
-                        HTTPUtils.SafeWriteJson(
+                        HTTPUtils.SafeWriteSse(
                             ctx,
-                            HttpStatusCode.InternalServerError,
-                            new ErrorResponse(e.Message)
+                            new MCPErrorResponse(null, new MCPError(-32603, e.Message))
                         );
                     }
                 }
@@ -220,6 +220,14 @@ namespace MimirMCP.Core.MCP
             try
             {
                 await HandleContextAsync(ctx);
+            }
+            catch (JsonException jsonEx)
+            {
+                _logger?.LogError(jsonEx.Message);
+                HTTPUtils.SafeWriteSse(
+                    ctx,
+                    new MCPErrorResponse(null, new MCPError(-32700, $"Parse error: {jsonEx.Message}"))
+                );
             }
             catch (Exception e)
             {

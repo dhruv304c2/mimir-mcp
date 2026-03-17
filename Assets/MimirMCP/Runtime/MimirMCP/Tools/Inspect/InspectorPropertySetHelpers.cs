@@ -1,6 +1,5 @@
 using System;
 using System.Reflection;
-using MimirMCP.Core.MCP.MCPTool;
 using UnityEngine;
 
 namespace MimirMCP.Tools.Inspect
@@ -11,7 +10,7 @@ namespace MimirMCP.Tools.Inspect
         {
             if (component == null)
             {
-                throw new MCPToolExecutionException(-32602, "Component reference is null.");
+                throw new ArgumentException("Component reference is null.");
             }
 
             var type = component.GetType();
@@ -19,16 +18,14 @@ namespace MimirMCP.Tools.Inspect
             var field = type.GetField(propertyName, flags);
             if (field == null)
             {
-                throw new MCPToolExecutionException(
-                    -32602,
+                throw new KeyNotFoundException(
                     $"Field '{propertyName}' not found on {type.FullName}. Run inspector_property_inspect to list available serialized fields."
                 );
             }
 
             if (!InspectorPropertyInspectTool.IsSerializableField(field))
             {
-                throw new MCPToolExecutionException(
-                    -32602,
+                throw new ArgumentException(
                     $"Field '{propertyName}' is not a serialized primitive/string/bool/vector/color. Use inspector_property_inspect to see supported options."
                 );
             }

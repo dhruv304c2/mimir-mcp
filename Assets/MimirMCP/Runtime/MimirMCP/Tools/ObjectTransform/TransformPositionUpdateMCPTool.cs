@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using MimirMCP.Core.Dtos.MCP;
@@ -45,8 +46,7 @@ namespace MimirMCP.Tools.ObjectTransform
         {
             if (!PositionX.HasValue && !PositionY.HasValue && !PositionZ.HasValue)
             {
-                throw new MCPToolExecutionException(
-                    -32602,
+                throw new ArgumentException(
                     "Specify at least one of position_x, position_y, or position_z."
                 );
             }

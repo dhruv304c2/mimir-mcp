@@ -7,6 +7,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using MimirMCP.Core.Dtos.MCP;
 using MimirMCP.Utils.HTTPUtils;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 
@@ -312,18 +313,9 @@ namespace MimirMCP.Core.MCP.MCPTool
         {
             if (!TryBindParameters(parameters, out var bindError))
             {
-                var errorMessage = bindError ?? "Invalid parameters provided.";
                 HTTPUtils.SafeWriteSse(
                     ctx,
-                    new MCPContentResponse
-                    {
-                        id = id,
-                        result = new MCPContentResult
-                        {
-                            content = new ContentBase[] { new ContentText(errorMessage) },
-                            isError = true,
-                        },
-                    }
+                    new MCPErrorResponse(id, new MCPError(-32602, bindError ?? "Invalid parameters provided."))
                 );
                 return;
             }
@@ -334,9 +326,11 @@ namespace MimirMCP.Core.MCP.MCPTool
             {
                 var content = await ExecuteTool(parameters ?? new Dictionary<string, object>());
 
-                if (content == null)
+                if (content == null || content.Length == 0)
                 {
-                    throw new MCPToolExecutionException(-32603, "Tool returned no content.");
+                    HTTPUtils.SafeWriteSse(ctx, ToToolErrorResponse(id,
+                        new InvalidOperationException("Tool returned no content.")));
+                    return;
                 }
 
                 HTTPUtils.SafeWriteSse(
@@ -348,42 +342,24 @@ namespace MimirMCP.Core.MCP.MCPTool
                     }
                 );
             }
-            catch (MCPToolExecutionException toolEx)
-            {
-                HTTPUtils.SafeWriteSse(
-                    ctx,
-                    new MCPContentResponse
-                    {
-                        id = id,
-                        result = new MCPContentResult
-                        {
-                            content = new ContentBase[] { new ContentText(toolEx.Message) },
-                            isError = true,
-                        },
-                    }
-                );
-            }
             catch (Exception ex)
             {
-                Debug.LogError(
-                    $"[MCPTool:{ToolName ?? GetType().Name}] Internal server error while executing tool. Exception: {ex}"
-                );
-                HTTPUtils.SafeWriteSse(
-                    ctx,
-                    new MCPContentResponse
-                    {
-                        id = id,
-                        result = new MCPContentResult
-                        {
-                            content = new ContentBase[]
-                            {
-                                new ContentText(ex.Message ?? "Tool execution failed."),
-                            },
-                            isError = true,
-                        },
-                    }
-                );
+                Debug.LogError($"[MCPTool:{ToolName}] {ex}");
+                HTTPUtils.SafeWriteSse(ctx, ToToolErrorResponse(id, ex));
             }
+        }
+
+        static MCPContentResponse ToToolErrorResponse(object id, Exception ex)
+        {
+            return new MCPContentResponse
+            {
+                id = id,
+                result = new MCPContentResult
+                {
+                    content = new ContentBase[] { new ContentText(ex.Message) },
+                    isError = true,
+                },
+            };
         }
 
         async UniTask SwitchToUnityThreadAsync()
@@ -465,18 +441,4 @@ namespace MimirMCP.Core.MCP.MCPTool
         public Type MemberType { get; }
     }
 
-    public class MCPToolExecutionException : Exception
-    {
-        public MCPToolExecutionException(
-            int errorCode,
-            string message,
-            Exception innerException = null
-        )
-            : base(message, innerException)
-        {
-            Error = new MCPError(errorCode, message);
-        }
-
-        public MCPError Error { get; }
-    }
 }

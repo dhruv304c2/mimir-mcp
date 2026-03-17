@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using MimirMCP.Core.Dtos.MCP;
@@ -84,14 +85,13 @@ namespace MimirMCP.Tools.Materials
         {
             if (string.IsNullOrWhiteSpace(Path) || string.IsNullOrWhiteSpace(PropertyName))
             {
-                throw new MCPToolExecutionException(-32602, "path and property_name are required.");
+                throw new ArgumentException("path and property_name are required.");
             }
 
             var renderer = MeshMaterialInspectTool.ResolveRenderer(Path);
             if (renderer == null)
             {
-                throw new MCPToolExecutionException(
-                    -32602,
+                throw new KeyNotFoundException(
                     $"MeshRenderer not found for path '{Path}'."
                 );
             }
@@ -102,13 +102,12 @@ namespace MimirMCP.Tools.Materials
         {
             if (material == null)
             {
-                throw new MCPToolExecutionException(-32002, "Renderer has no material.");
+                throw new InvalidOperationException("Renderer has no material.");
             }
 
             if (!material.HasProperty(PropertyName))
             {
-                throw new MCPToolExecutionException(
-                    -32602,
+                throw new ArgumentException(
                     $"Material is missing property '{PropertyName}'."
                 );
             }
@@ -116,14 +115,13 @@ namespace MimirMCP.Tools.Materials
             var shader = material.shader;
             if (shader == null)
             {
-                throw new MCPToolExecutionException(-32002, "Material shader unavailable.");
+                throw new InvalidOperationException("Material shader unavailable.");
             }
 
             var propIndex = shader.FindPropertyIndex(PropertyName);
             if (propIndex < 0 || shader.GetPropertyType(propIndex) != ShaderPropertyType.Color)
             {
-                throw new MCPToolExecutionException(
-                    -32602,
+                throw new ArgumentException(
                     $"Property '{PropertyName}' is not a color property."
                 );
             }

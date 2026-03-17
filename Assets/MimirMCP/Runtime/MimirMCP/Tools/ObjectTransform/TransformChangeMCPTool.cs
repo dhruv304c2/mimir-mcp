@@ -110,8 +110,7 @@ namespace MimirMCP.Tools.ObjectTransform
 
             if (appliedChanges.Count == 0)
             {
-                throw new MCPToolExecutionException(
-                    -32602,
+                throw new ArgumentException(
                     "No transform properties were specified to update."
                 );
             }
@@ -183,19 +182,19 @@ namespace MimirMCP.Tools.ObjectTransform
         {
             if (string.IsNullOrWhiteSpace(path))
             {
-                throw new MCPToolExecutionException(-32602, "path parameter is required.");
+                throw new ArgumentException("path parameter is required.");
             }
 
             var scene = SceneManager.GetActiveScene();
             if (!scene.IsValid())
             {
-                throw new MCPToolExecutionException(-32001, "Active scene is invalid.");
+                throw new InvalidOperationException("Active scene is invalid.");
             }
 
             var roots = scene.GetRootGameObjects();
             if (!TryFindTransform(roots, path, out var transform))
             {
-                throw new MCPToolExecutionException(-32602, $"Transform '{path}' was not found.");
+                throw new KeyNotFoundException($"Transform '{path}' was not found.");
             }
 
             return transform;
@@ -214,7 +213,7 @@ namespace MimirMCP.Tools.ObjectTransform
                 return false;
             }
 
-            var root = System.Array.Find(roots, go => go.name == segments[0]);
+            var root = Array.Find(roots, go => go.name == segments[0]);
             if (root == null)
             {
                 return false;

@@ -3,6 +3,7 @@ using Cysharp.Threading.Tasks;
 using MimirMCP.Core.Dtos.MCP;
 using MimirMCP.Core.MCP.MCPTool;
 using MimirMCP.Core.MCP.MCPTool.Attributes;
+using System;
 using MimirMCP.Tools.ObjectTransform;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -29,14 +30,13 @@ namespace MimirMCP.Tools.Inspect
         {
             if (string.IsNullOrWhiteSpace(Path))
             {
-                throw new MCPToolExecutionException(-32602, "path parameter is required.");
+                throw new ArgumentException("path parameter is required.");
             }
 
             var renderer = ResolveRenderer(Path);
             if (renderer == null)
             {
-                throw new MCPToolExecutionException(
-                    -32602,
+                throw new KeyNotFoundException(
                     $"MeshRenderer not found at path '{Path}'."
                 );
             }

@@ -3,6 +3,7 @@ using Cysharp.Threading.Tasks;
 using MimirMCP.Core.Dtos.MCP;
 using MimirMCP.Core.MCP.MCPTool;
 using MimirMCP.Core.MCP.MCPTool.Attributes;
+using System;
 using UnityEngine;
 
 namespace MimirMCP.Tools
@@ -46,10 +47,7 @@ namespace MimirMCP.Tools
         {
             if (string.IsNullOrWhiteSpace(Message))
             {
-                throw new MCPToolExecutionException(
-                    -32602,
-                    "message parameter is required and must be a string."
-                );
+                throw new ArgumentException("message parameter is required and must be a string.");
             }
 
             var level = ResolveLevel(Level);

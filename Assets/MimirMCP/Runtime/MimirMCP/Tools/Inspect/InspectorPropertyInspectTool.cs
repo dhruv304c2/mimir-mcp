@@ -63,8 +63,7 @@ namespace MimirMCP.Tools.Inspect
         {
             if (string.IsNullOrWhiteSpace(path) || string.IsNullOrWhiteSpace(componentTypeName))
             {
-                throw new MCPToolExecutionException(
-                    -32602,
+                throw new ArgumentException(
                     "path and component_type are required."
                 );
             }
@@ -72,7 +71,7 @@ namespace MimirMCP.Tools.Inspect
             var scene = SceneManager.GetActiveScene();
             if (!scene.IsValid())
             {
-                throw new MCPToolExecutionException(-32001, "Active scene is invalid.");
+                throw new InvalidOperationException("Active scene is invalid.");
             }
 
             if (
@@ -83,14 +82,13 @@ namespace MimirMCP.Tools.Inspect
                 )
             )
             {
-                throw new MCPToolExecutionException(-32602, $"Transform '{path}' was not found.");
+                throw new KeyNotFoundException($"Transform '{path}' was not found.");
             }
 
             var type = ResolveType(componentTypeName);
             if (type == null)
             {
-                throw new MCPToolExecutionException(
-                    -32602,
+                throw new KeyNotFoundException(
                     $"Component type '{componentTypeName}' not found."
                 );
             }
@@ -98,8 +96,7 @@ namespace MimirMCP.Tools.Inspect
             var component = transform.GetComponent(type);
             if (component == null)
             {
-                throw new MCPToolExecutionException(
-                    -32602,
+                throw new KeyNotFoundException(
                     $"Component '{type.FullName}' not found on '{path}'."
                 );
             }

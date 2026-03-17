@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using MimirMCP.Core.Dtos.MCP;
@@ -46,8 +47,7 @@ namespace MimirMCP.Tools.Materials
             var renderer = MeshMaterialInspectTool.ResolveRenderer(Path);
             if (renderer == null)
             {
-                throw new MCPToolExecutionException(
-                    -32602,
+                throw new KeyNotFoundException(
                     $"MeshRenderer not found for path '{Path}'."
                 );
             }
@@ -55,13 +55,12 @@ namespace MimirMCP.Tools.Materials
             var material = renderer.material;
             if (material == null)
             {
-                throw new MCPToolExecutionException(-32002, "Renderer has no material.");
+                throw new InvalidOperationException("Renderer has no material.");
             }
 
             if (!material.HasProperty(PropertyName))
             {
-                throw new MCPToolExecutionException(
-                    -32602,
+                throw new ArgumentException(
                     $"Material is missing property '{PropertyName}'."
                 );
             }
@@ -69,14 +68,13 @@ namespace MimirMCP.Tools.Materials
             var shader = material.shader;
             if (shader == null)
             {
-                throw new MCPToolExecutionException(-32002, "Material shader unavailable.");
+                throw new InvalidOperationException("Material shader unavailable.");
             }
 
             var propIndex = shader.FindPropertyIndex(PropertyName);
             if (propIndex < 0)
             {
-                throw new MCPToolExecutionException(
-                    -32602,
+                throw new KeyNotFoundException(
                     $"Property '{PropertyName}' not found on shader."
                 );
             }
@@ -84,8 +82,7 @@ namespace MimirMCP.Tools.Materials
             var propType = shader.GetPropertyType(propIndex);
             if (propType != ShaderPropertyType.Float && propType != ShaderPropertyType.Range)
             {
-                throw new MCPToolExecutionException(
-                    -32602,
+                throw new ArgumentException(
                     $"Property '{PropertyName}' is not a numeric (float/range) property."
                 );
             }

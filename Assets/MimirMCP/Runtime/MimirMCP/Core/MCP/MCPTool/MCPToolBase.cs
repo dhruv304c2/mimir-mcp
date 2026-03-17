@@ -342,6 +342,24 @@ namespace MimirMCP.Core.MCP.MCPTool
                     }
                 );
             }
+            catch (ArgumentException argEx)
+            {
+                Debug.LogError($"[MCPTool:{ToolName}] {argEx}");
+                HTTPUtils.SafeWriteSse(ctx,
+                    new MCPErrorResponse(id, new MCPError(-32602, argEx.Message)));
+            }
+            catch (JsonException jsonEx)
+            {
+                Debug.LogError($"[MCPTool:{ToolName}] {jsonEx}");
+                HTTPUtils.SafeWriteSse(ctx,
+                    new MCPErrorResponse(id, new MCPError(-32700, $"Parse error: {jsonEx.Message}")));
+            }
+            catch (NotImplementedException notImplEx)
+            {
+                Debug.LogError($"[MCPTool:{ToolName}] {notImplEx}");
+                HTTPUtils.SafeWriteSse(ctx,
+                    new MCPErrorResponse(id, new MCPError(-32601, notImplEx.Message)));
+            }
             catch (Exception ex)
             {
                 Debug.LogError($"[MCPTool:{ToolName}] {ex}");

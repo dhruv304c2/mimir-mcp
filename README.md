@@ -339,15 +339,24 @@ The agent reads the error message in the `content` array and can adapt (retry wi
 
 ### Which Exception to Throw
 
-Use the standard C# exception that semantically matches the failure:
+Use the standard C# exception that semantically matches the failure. The framework maps certain exceptions to **protocol-level errors** (JSON-RPC `error` object) and everything else to **tool-level errors** (`isError: true` content response).
+
+**Protocol errors** — the request itself is invalid (agent sent bad input):
+
+| Scenario | Exception | JSON-RPC error code | Example |
+| --- | --- | --- | --- |
+| Missing or invalid parameter | `ArgumentException` | `-32602` | `throw new ArgumentException("path parameter is required.");` |
+| Malformed data in request | `JsonException` | `-32700` | `throw new JsonException("Expected a JSON object.");` |
+| Feature not implemented | `NotImplementedException` | `-32601` | `throw new NotImplementedException("Undo is not supported.");` |
+
+**Tool errors** — the request was valid but the operation failed at runtime:
 
 | Scenario | Exception | Example |
 | --- | --- | --- |
-| Missing or invalid parameter | `ArgumentException` | `throw new ArgumentException("path parameter is required.");` |
 | Object / resource not found | `KeyNotFoundException` | `throw new KeyNotFoundException($"Transform '{path}' was not found.");` |
 | Invalid state or precondition | `InvalidOperationException` | `throw new InvalidOperationException("Active scene is invalid.");` |
 | Operation timed out | `TimeoutException` | `throw new TimeoutException("Physics raycast timed out.");` |
-| Any other failure | `Exception` (or subclass) | `throw new Exception("Something unexpected happened.");` |
+| Any other runtime failure | `Exception` (or subclass) | `throw new Exception("Something unexpected happened.");` |
 
 ### Example
 
@@ -383,10 +392,11 @@ public class MyTool : MCPToolBase
 | Layer | What triggers it | Response shape |
 | --- | --- | --- |
 | **Parameter binding** | Required param missing, type conversion failure | JSON-RPC `error` with code `-32602` |
-| **Tool execution** | Any exception from `ExecuteTool` | `result.isError = true` with error message in `content` |
-| **Transport / routing** | Malformed JSON, unknown MCP method | JSON-RPC `error` with code `-32700` or `-32603` |
+| **Tool execution (protocol)** | `ArgumentException`, `JsonException`, `NotImplementedException` from `ExecuteTool` | JSON-RPC `error` with code `-32602`, `-32700`, or `-32601` |
+| **Tool execution (runtime)** | Any other exception from `ExecuteTool` | `result.isError = true` with error message in `content` |
+| **Transport / routing** | Malformed JSON body, unknown MCP method | JSON-RPC `error` with code `-32700` or `-32603` |
 
-Parameter binding errors are the only tool-related case that produces a protocol-level error, because the request itself was structurally invalid. Everything else from your tool code becomes a tool-level error that agents can read and respond to.
+Protocol errors tell the agent its request was structurally wrong — it should fix its arguments or stop calling the method. Tool errors tell the agent the request was valid but the operation failed — it can retry with different inputs or try an alternative approach.
 
 ## Inspiration
 

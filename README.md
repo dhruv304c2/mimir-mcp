@@ -320,43 +320,34 @@ Mimir MCP automatically catches any exception thrown from your `ExecuteTool` imp
 
 ### How It Works
 
-When `ExecuteTool` throws, the framework catches it and returns a **tool-level error** — a normal `tools/call` result with `isError: true`:
+When `ExecuteTool` throws, the framework catches the exception and returns a **JSON-RPC protocol error** that MCP clients (including Google ADK) recognize and surface to the agent:
 
 ```json
 {
   "jsonrpc": "2.0",
   "id": "call-1",
-  "result": {
-    "content": [
-      { "type": "text", "text": "Transform 'NonExistent/Path' was not found." }
-    ],
-    "isError": true
+  "error": {
+    "code": -32602,
+    "message": "Transform 'NonExistent/Path' was not found."
   }
 }
 ```
 
-The agent reads the error message in the `content` array and can adapt (retry with different arguments, call a different tool, etc.). This is distinct from **protocol-level errors** (malformed JSON, unknown method) which use the JSON-RPC `error` field and are handled by the framework automatically.
+The agent framework sees the error at the transport layer and reports the failure to the LLM, which can then adapt (retry with different arguments, call a different tool, etc.).
 
 ### Which Exception to Throw
 
-Use the standard C# exception that semantically matches the failure. The framework maps certain exceptions to **protocol-level errors** (JSON-RPC `error` object) and everything else to **tool-level errors** (`isError: true` content response).
-
-**Protocol errors** — the request itself is invalid (agent sent bad input):
+Use the standard C# exception that semantically matches the failure. The framework maps each exception type to a JSON-RPC error code:
 
 | Scenario | Exception | JSON-RPC error code | Example |
 | --- | --- | --- | --- |
 | Missing or invalid parameter | `ArgumentException` | `-32602` | `throw new ArgumentException("path parameter is required.");` |
+| Object / resource not found | `KeyNotFoundException` | `-32602` | `throw new KeyNotFoundException($"Transform '{path}' was not found.");` |
 | Malformed data in request | `JsonException` | `-32700` | `throw new JsonException("Expected a JSON object.");` |
 | Feature not implemented | `NotImplementedException` | `-32601` | `throw new NotImplementedException("Undo is not supported.");` |
-
-**Tool errors** — the request was valid but the operation failed at runtime:
-
-| Scenario | Exception | Example |
-| --- | --- | --- |
-| Object / resource not found | `KeyNotFoundException` | `throw new KeyNotFoundException($"Transform '{path}' was not found.");` |
-| Invalid state or precondition | `InvalidOperationException` | `throw new InvalidOperationException("Active scene is invalid.");` |
-| Operation timed out | `TimeoutException` | `throw new TimeoutException("Physics raycast timed out.");` |
-| Any other runtime failure | `Exception` (or subclass) | `throw new Exception("Something unexpected happened.");` |
+| Invalid state or precondition | `InvalidOperationException` | `-32603` | `throw new InvalidOperationException("Active scene is invalid.");` |
+| Operation timed out | `TimeoutException` | `-32603` | `throw new TimeoutException("Physics raycast timed out.");` |
+| Any other failure | `Exception` (or subclass) | `-32603` | `throw new Exception("Something unexpected happened.");` |
 
 ### Example
 
@@ -392,11 +383,10 @@ public class MyTool : MCPToolBase
 | Layer | What triggers it | Response shape |
 | --- | --- | --- |
 | **Parameter binding** | Required param missing, type conversion failure | JSON-RPC `error` with code `-32602` |
-| **Tool execution (protocol)** | `ArgumentException`, `JsonException`, `NotImplementedException` from `ExecuteTool` | JSON-RPC `error` with code `-32602`, `-32700`, or `-32601` |
-| **Tool execution (runtime)** | Any other exception from `ExecuteTool` | `result.isError = true` with error message in `content` |
+| **Tool execution** | Any exception from `ExecuteTool` | JSON-RPC `error` with code mapped from exception type |
 | **Transport / routing** | Malformed JSON body, unknown MCP method | JSON-RPC `error` with code `-32700` or `-32603` |
 
-Protocol errors tell the agent its request was structurally wrong — it should fix its arguments or stop calling the method. Tool errors tell the agent the request was valid but the operation failed — it can retry with different inputs or try an alternative approach.
+All errors are protocol-level JSON-RPC errors. This ensures MCP clients (including Google ADK) reliably surface failures to the agent, regardless of whether they support the `isError` content flag.
 
 ## Inspiration
 

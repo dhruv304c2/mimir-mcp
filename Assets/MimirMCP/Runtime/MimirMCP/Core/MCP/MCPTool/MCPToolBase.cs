@@ -328,8 +328,8 @@ namespace MimirMCP.Core.MCP.MCPTool
 
                 if (content == null || content.Length == 0)
                 {
-                    HTTPUtils.SafeWriteSse(ctx, ToToolErrorResponse(id,
-                        new InvalidOperationException("Tool returned no content.")));
+                    HTTPUtils.SafeWriteSse(ctx,
+                        new MCPErrorResponse(id, new MCPError(-32603, "Tool returned no content.")));
                     return;
                 }
 
@@ -342,42 +342,28 @@ namespace MimirMCP.Core.MCP.MCPTool
                     }
                 );
             }
-            catch (ArgumentException argEx)
-            {
-                Debug.LogError($"[MCPTool:{ToolName}] {argEx}");
-                HTTPUtils.SafeWriteSse(ctx,
-                    new MCPErrorResponse(id, new MCPError(-32602, argEx.Message)));
-            }
-            catch (JsonException jsonEx)
-            {
-                Debug.LogError($"[MCPTool:{ToolName}] {jsonEx}");
-                HTTPUtils.SafeWriteSse(ctx,
-                    new MCPErrorResponse(id, new MCPError(-32700, $"Parse error: {jsonEx.Message}")));
-            }
-            catch (NotImplementedException notImplEx)
-            {
-                Debug.LogError($"[MCPTool:{ToolName}] {notImplEx}");
-                HTTPUtils.SafeWriteSse(ctx,
-                    new MCPErrorResponse(id, new MCPError(-32601, notImplEx.Message)));
-            }
             catch (Exception ex)
             {
                 Debug.LogError($"[MCPTool:{ToolName}] {ex}");
-                HTTPUtils.SafeWriteSse(ctx, ToToolErrorResponse(id, ex));
+                HTTPUtils.SafeWriteSse(ctx,
+                    new MCPErrorResponse(id, new MCPError(MapErrorCode(ex), ex.Message)));
             }
         }
 
-        static MCPContentResponse ToToolErrorResponse(object id, Exception ex)
+        static int MapErrorCode(Exception ex)
         {
-            return new MCPContentResponse
+            switch (ex)
             {
-                id = id,
-                result = new MCPContentResult
-                {
-                    content = new ContentBase[] { new ContentText(ex.Message) },
-                    isError = true,
-                },
-            };
+                case ArgumentException _:
+                case KeyNotFoundException _:
+                    return -32602;
+                case JsonException _:
+                    return -32700;
+                case NotImplementedException _:
+                    return -32601;
+                default:
+                    return -32603;
+            }
         }
 
         async UniTask SwitchToUnityThreadAsync()
